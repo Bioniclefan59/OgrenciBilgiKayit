@@ -32,5 +32,23 @@ namespace OgrenciBilgiKayit
             this.Hide();
             sorguFormu.Show();
         }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            DersKaydi dersKaydi = new DersKaydi();
+            dersKaydi.FormClosed += (s, args) => { this.Show(); };
+            this.Hide();
+            dersKaydi.Show();
+        }
+
+        private void btnSinavSonuclari_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }
