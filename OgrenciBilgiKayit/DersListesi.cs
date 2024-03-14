@@ -24,15 +24,33 @@ namespace OgrenciBilgiKayit
             veriErisimi = new VeriErisimi();
             Load += DersListesi_Load;
         }
-        private int GetSelectedDersID()
+        private int GetSelectedDersID(string dersKodu)
         {
-            if (dgvDersListesi.SelectedRows.Count > 0)
+            int dersID = 0;
+            try
             {
-                DataGridViewRow selectedRow = dgvDersListesi.SelectedRows[0];
-                int dersID = Convert.ToInt32(selectedRow.Cells["DersID"].Value);
-                return dersID;
+                using (SqlConnection connection = new SqlConnection(veriErisimi.GetConnectionString()))
+                {
+                    connection.Open();
+
+                    using (SqlCommand command = new SqlCommand("GetDersIDByDersKodu", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@DersKodu", dersKodu);
+
+                        object result = command.ExecuteScalar();
+                        if (result != null)
+                        {
+                            dersID = Convert.ToInt32(result);
+                        }
+                    }
+                }
             }
-            return 0;
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error getting DersID: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            return dersID;
         }
         private void DersListesi_Load(object sender, EventArgs e)
         {
@@ -69,17 +87,17 @@ namespace OgrenciBilgiKayit
             {
                 if (dgvDersListesi.SelectedRows.Count > 0)
                 {
-                    int selectedDersID = GetSelectedDersID();
                     string secilenDersKodu = dgvDersListesi.SelectedRows[0].Cells["DersKodu"].Value.ToString();
                     string secilenDersAdi = dgvDersListesi.SelectedRows[0].Cells["DersAdi"].Value.ToString();
                     string secilenDers = $"{secilenDersKodu} - {secilenDersAdi}";
 
-                    DersKaydi dersKaydiForm = Application.OpenForms.OfType<DersKaydi>().FirstOrDefault() ?? new DersKaydi(selectedDersID);
+                    int dersID = GetSelectedDersID(secilenDersKodu);
+                    DersKaydi dersKaydiForm = Application.OpenForms.OfType<DersKaydi>().FirstOrDefault() ?? new DersKaydi(dersID);
 
                     dersKaydiForm.SecilenDersiEkle(secilenDers);
                     dersKaydiForm.OgrenciNo = ogrenciNo;
                     dersKaydiForm.OgrenciIsmi = ogrenciIsmi;
-                    dersKaydiForm.SecilenDersID = selectedDersID;
+                    dersKaydiForm.SecilenDersID = dersID;
                     dersKaydiForm.Show();
 
                     this.Hide();

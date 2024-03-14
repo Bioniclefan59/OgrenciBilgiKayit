@@ -121,6 +121,7 @@ namespace OgrenciBilgiKayit
             this.btnIptal.TabIndex = 8;
             this.btnIptal.Text = "İptal";
             this.btnIptal.UseVisualStyleBackColor = true;
+            this.btnIptal.Click += new System.EventHandler(this.btnIptal_Click);
             // 
             // DersKaydi
             // 

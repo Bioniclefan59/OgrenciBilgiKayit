@@ -21,6 +21,12 @@ namespace OgrenciBilgiKayit
         public int ogrenciNo;
         public string ogrenciIsmi;
         private readonly int selectedDersID;
+        public DersKaydi()
+        {
+            InitializeComponent();
+            veriErisimi = new VeriErisimi();
+            Load += DersKaydi_Load;
+        }
         public DersKaydi(int selectedDersID)
         {
             InitializeComponent();
@@ -124,7 +130,7 @@ namespace OgrenciBilgiKayit
             try
             {
                 int ogrenciNo = Convert.ToInt32(txtOgrenciNo.Text); 
-                int dersID = selectedDersID; 
+                int dersID = SecilenDersID; 
 
                 using (SqlConnection connection = new SqlConnection(veriErisimi.GetConnectionString()))
                 {
@@ -165,6 +171,11 @@ namespace OgrenciBilgiKayit
         private void txtOgrenciNo_TextChanged(object sender, EventArgs e)
         {
 
+        }
+
+        private void btnIptal_Click(object sender, EventArgs e)
+        {
+            this.Close();
         }
     }
 }

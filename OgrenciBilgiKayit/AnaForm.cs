@@ -48,7 +48,10 @@ namespace OgrenciBilgiKayit
 
         private void btnSinavSonuclari_Click(object sender, EventArgs e)
         {
-
+            SınavAraForm sinavAraForm = new SınavAraForm();
+            sinavAraForm.FormClosed += (s, args) => { this.Show(); };
+            this.Hide();
+            sinavAraForm.Show();
         }
     }
 }
