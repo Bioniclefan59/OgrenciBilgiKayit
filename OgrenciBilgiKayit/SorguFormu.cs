@@ -1,8 +1,10 @@
-﻿using System;
+﻿using OgrenciBilgiKayit.OkulDBContext;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.Data;
+using System.Data.Entity;
 using System.Data.SqlClient;
 using System.Drawing;
 using System.Linq;
@@ -38,27 +40,27 @@ namespace OgrenciBilgiKayit
         {
             try
             {
-                string connectionString = veriErisimi.GetConnectionString();
-
-                using (SqlConnection connection = new SqlConnection(connectionString))
+                using (var dbContext = new OkulDBCntxt())
                 {
-                    connection.Open();
+                    var query = dbContext.Ogrenciler.AsQueryable();
 
-                    using (SqlCommand command = new SqlCommand("dbo.SorgulaOgrenci", connection))
+                    if (!string.IsNullOrWhiteSpace(txtOgrenciNo.Text))
                     {
-                        command.CommandType = CommandType.StoredProcedure;
-
-                        
-                        command.Parameters.AddWithValue("@OgrenciNo", string.IsNullOrWhiteSpace(txtOgrenciNo.Text) ? (object)DBNull.Value : txtOgrenciNo.Text.Trim());
-                        command.Parameters.AddWithValue("@Bolum", string.IsNullOrWhiteSpace(cmbBolumler.Text) ? (object)DBNull.Value : cmbBolumler.Text.Trim());
-                        command.Parameters.AddWithValue("@KayitTarihi", dtpKayitTarihi.Value);
-
-                        SqlDataAdapter adapter = new SqlDataAdapter(command);
-                        DataTable dataTable = new DataTable();
-                        adapter.Fill(dataTable);
-
-                        dgvSonuclar.DataSource = dataTable;
+                        int ogrenciNo = int.Parse(txtOgrenciNo.Text);
+                        query = query.Where(o => o.ogrenci_no == ogrenciNo);
                     }
+
+                    if (!string.IsNullOrWhiteSpace(cmbBolumler.Text))
+                    {
+                        string bolum = cmbBolumler.Text.Trim();
+                        query = query.Where(o => o.bolum == bolum);
+                    }
+
+                    DateTime selectedDate = dtpKayitTarihi.Value.Date;
+                    query = query.Where(o => DbFunctions.TruncateTime(o.kayit_tarihi) == selectedDate);
+                    var results = query.ToList();
+
+                    dgvSonuclar.DataSource = results;
                 }
             }
             catch (Exception ex)

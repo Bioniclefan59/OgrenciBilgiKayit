@@ -12,34 +12,34 @@ namespace OgrenciBilgiKayit
 {
     public class VeriErisimi
     {
-        public void OgrenciEkle(int ogrenciNo, string ad, string soyad, string bolum, int sinif, DateTime dogumTarihi, string cinsiyet)
-{
-    try
+            public void OgrenciEkle(int ogrenciNo, string ad, string soyad, string bolum, int sinif, DateTime dogumTarihi, string cinsiyet)
     {
-        using (SqlConnection connection = new SqlConnection(GetConnectionString()))
+        try
         {
-            connection.Open();
-
-            using (SqlCommand command = new SqlCommand("dbo.OgrenciEkle", connection))
+            using (SqlConnection connection = new SqlConnection(GetConnectionString()))
             {
-                command.CommandType = CommandType.StoredProcedure;
+                connection.Open();
 
-                command.Parameters.AddWithValue("@OgrenciNo", ogrenciNo);
-                command.Parameters.AddWithValue("@Ad", ad);
-                command.Parameters.AddWithValue("@Soyad", soyad);
-                command.Parameters.AddWithValue("@Bolum", bolum);
-                command.Parameters.AddWithValue("@Sinif", sinif);
-                command.Parameters.AddWithValue("@DogumTarihi", dogumTarihi);
-                command.Parameters.AddWithValue("@Cinsiyet", cinsiyet);
+                using (SqlCommand command = new SqlCommand("dbo.OgrenciEkle", connection))
+                {
+                    command.CommandType = CommandType.StoredProcedure;
 
-                command.ExecuteNonQuery();
+                    command.Parameters.AddWithValue("@OgrenciNo", ogrenciNo);
+                    command.Parameters.AddWithValue("@Ad", ad);
+                    command.Parameters.AddWithValue("@Soyad", soyad);
+                    command.Parameters.AddWithValue("@Bolum", bolum);
+                    command.Parameters.AddWithValue("@Sinif", sinif);
+                    command.Parameters.AddWithValue("@DogumTarihi", dogumTarihi);
+                    command.Parameters.AddWithValue("@Cinsiyet", cinsiyet);
+
+                    command.ExecuteNonQuery();
+                }
             }
         }
-    }
-    catch (Exception ex)
-    {
-        MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-    }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
 
         }
         public string GetConnectionString()

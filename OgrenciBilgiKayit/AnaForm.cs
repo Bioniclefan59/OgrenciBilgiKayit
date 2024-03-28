@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OgrenciBilgiKayit.OkulDBContext;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -15,6 +16,14 @@ namespace OgrenciBilgiKayit
         public AnaForm()
         {
             InitializeComponent();
+            Load += AnaForm_Load;
+        }
+
+        private void AnaForm_Load(object sender, EventArgs e)
+        {
+            OkulDBCntxt dbContext = new OkulDBCntxt();
+            dbContext.BolumleriDoldur();
+            dbContext.OrnekDersleDoldur();
         }
 
         private void btnKayit_click(object sender, EventArgs e)

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OgrenciBilgiKayit.OkulDBContext;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -29,26 +30,18 @@ namespace OgrenciBilgiKayit
             int dersID = 0;
             try
             {
-                using (SqlConnection connection = new SqlConnection(veriErisimi.GetConnectionString()))
+                using (var dbContext = new OkulDBCntxt())
                 {
-                    connection.Open();
-
-                    using (SqlCommand command = new SqlCommand("GetDersIDByDersKodu", connection))
+                    var ders = dbContext.Dersler.FirstOrDefault(d => d.DersKodu == dersKodu);
+                    if (ders != null)
                     {
-                        command.CommandType = CommandType.StoredProcedure;
-                        command.Parameters.AddWithValue("@DersKodu", dersKodu);
-
-                        object result = command.ExecuteScalar();
-                        if (result != null)
-                        {
-                            dersID = Convert.ToInt32(result);
-                        }
+                        dersID = ders.DersID;
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error getting DersID: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("DersID alınırken hata oluştu: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             return dersID;
         }
@@ -56,28 +49,49 @@ namespace OgrenciBilgiKayit
         {
             try
             {
-                using (SqlConnection connection = new SqlConnection(veriErisimi.GetConnectionString()))
+                DersKaydi dersKaydi = new DersKaydi();
+                string ogrenciNoText = this.ogrenciNo.ToString();
+                MessageBox.Show("Ogrenci No Text: " + ogrenciNoText);
+                if (int.TryParse(ogrenciNoText, out int ogrenciNo))
                 {
-                    connection.Open();
-
-                    using (SqlCommand command = new SqlCommand("OgrenciNodanDersAl", connection))
+                    using (var dbContext = new OkulDBCntxt())
                     {
-                        command.CommandType = CommandType.StoredProcedure;
-                        command.Parameters.AddWithValue("@OgrenciNo", ogrenciNo);
 
-                        using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+                        var bolumAdi = dbContext.Ogrenciler
+                            .Where(o => o.ogrenci_no == ogrenciNo)
+                            .Select(o => o.bolum)
+                            .FirstOrDefault();
+
+                        var bolumID = dbContext.Bolumler
+                            .Where(o => o.BolumAdi == bolumAdi)
+                            .Select(o => o.BolumID)
+                            .FirstOrDefault();
+
+                        var dersler = dbContext.Dersler
+                            .Where(d => d.BolumID == bolumID)
+                            .Select(d => new { d.DersKodu, d.DersAdi })
+                            .ToList();
+
+                        DataTable derslerTablo = new DataTable();
+                        derslerTablo.Columns.Add("DersKodu", typeof(string));
+                        derslerTablo.Columns.Add("DersAdi", typeof(string));
+
+                        foreach (var ders in dersler)
                         {
-                            DataTable derslerTablo = new DataTable();
-                            adapter.Fill(derslerTablo);
-
-                            dgvDersListesi.DataSource = derslerTablo;
+                            derslerTablo.Rows.Add(ders.DersKodu, ders.DersAdi);
                         }
+
+                        dgvDersListesi.DataSource = derslerTablo;
                     }
+                }
+                else
+                {
+                    MessageBox.Show("Ogrenci No hatalı.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error loading lectures: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Dersleri yüklerken hata oluştu: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

@@ -1,4 +1,6 @@
-﻿using System;
+﻿using OgrenciBilgiKayit.Entity_Classes;
+using OgrenciBilgiKayit.OkulDBContext;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -37,34 +39,21 @@ namespace OgrenciBilgiKayit
 
             try
             {
-                using (SqlConnection connection = new SqlConnection(veriErisimi.GetConnectionString()))
+                int? ogrenciNo = GetOgrenciNoByIsim(enteredText);
+
+                if (ogrenciNo.HasValue)
                 {
-                    connection.Open();
-
-                    using (SqlCommand command = new SqlCommand("GetOgrenciNoByIsim", connection))
-                    {
-                        command.CommandType = CommandType.StoredProcedure;
-                        command.Parameters.AddWithValue("@Isim", enteredText);
-
-                        using (SqlDataReader reader = command.ExecuteReader())
-                        {
-                            if (reader.Read())
-                            {
-                                int ogrenciNo = Convert.ToInt32(reader["OgrenciNo"]);
-                                txtOgrenciNo.Text = ogrenciNo.ToString();
-                                PopulateDersKoduComboBox(ogrenciNo);
-                            }
-                            else
-                            {
-                                txtOgrenciNo.Text = string.Empty;
-                            }
-                        }
-                    }
+                    txtOgrenciNo.Text = ogrenciNo.Value.ToString();
+                    PopulateDersKoduComboBox(ogrenciNo.Value);
+                }
+                else
+                {
+                    txtOgrenciNo.Text = string.Empty;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error getting student number: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Öğrenci numarası alınırken hata oluştu: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
         private void btnKaydet_Click(object sender, EventArgs e)
@@ -78,37 +67,37 @@ namespace OgrenciBilgiKayit
 
                 int dersID = GetDersIDByKodu(dersKodu);
 
-                InsertNot(ogrenciNo, dersID, sinav, not);
+                InsertOrUpdateNot(ogrenciNo, dersID, sinav, not);
 
-                MessageBox.Show("Exam data saved successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Sınav bilgisi kaydedildi.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error occurred while saving exam data: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Sınav bilgisi kaydedilirken hata oluştu: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        public List<string> OgrenciIsmiAl()
+        {
+            using (var dbContext = new OkulDBCntxt())
+            {
+                var fullNameList = dbContext.Ogrenciler
+                    .Select(o => o.ad + " " + o.soyad)
+                    .ToList();
+
+                return fullNameList;
             }
         }
         private void OgrenciIsmiYukle()
         {
             try
             {
-                using (SqlConnection connection = new SqlConnection(veriErisimi.GetConnectionString()))
+                var fullNameList = OgrenciIsmiAl();
+
+                foreach (var fullName in fullNameList)
                 {
-                    connection.Open();
-
-                    using (SqlCommand command = new SqlCommand("OgrenciIsmiAl", connection))
-                    {
-                        command.CommandType = CommandType.StoredProcedure;
-
-                        using (SqlDataReader reader = command.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                string fullName = reader["FullName"].ToString();
-                                autoCompleteCollection.Add(fullName);
-                            }
-                        }
-                    }
+                    autoCompleteCollection.Add(fullName);
                 }
+
                 txtOgrenciIsmi.TextChanged += TxtOgrenciIsmi_TextChanged;
             }
             catch (Exception ex)
@@ -116,33 +105,33 @@ namespace OgrenciBilgiKayit
                 MessageBox.Show("Error loading student names: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+        public int? GetOgrenciNoByIsim(string isim)
+        {
+            using (var dbContext = new OkulDBCntxt())
+            {
+                var ogrenciNo = dbContext.Ogrenciler
+                    .Where(o => (o.ad + " " + o.soyad) == isim)
+                    .Select(o => o.ogrenci_no)
+                    .FirstOrDefault();
 
+                return ogrenciNo;
+            }
+        }
         public int GetOgrenciNo(string isim)
         {
             int ogrenciNo = 0;
 
             try
             {
-                using (SqlConnection connection = new SqlConnection(veriErisimi.GetConnectionString()))
-                {
-                    using (SqlCommand command = new SqlCommand("GetOgrenciNoByIsim", connection))
-                    {
-                        command.CommandType = CommandType.StoredProcedure;
-                        command.Parameters.AddWithValue("@Isim", isim);
 
-                        connection.Open();
-                        object result = command.ExecuteScalar();
+                var ogrenciNoNullable = GetOgrenciNoByIsim(isim);
 
-                        if (result != null)
-                        {
-                            ogrenciNo = Convert.ToInt32(result);
-                        }
-                    }
-                }
+
+                ogrenciNo = ogrenciNoNullable ?? 0;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error getting student number: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Öğrenci Numarasını alırken hata oluştu: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
             return ogrenciNo;
@@ -153,56 +142,83 @@ namespace OgrenciBilgiKayit
 
             try
             {
-                using (SqlConnection connection = new SqlConnection(veriErisimi.GetConnectionString()))
+                using (var dbContext = new OkulDBCntxt())
                 {
-                    connection.Open();
+                    var dersKodlari = dbContext.Dersler
+                        .Where(d => dbContext.OgrenciAtamalari.Any(oa => oa.ogrenci_no == ogrenciNo && oa.DersID == d.DersID))
+                        .Select(d => d.DersKodu)
+                        .ToList();
 
-                    using (SqlCommand command = new SqlCommand("SELECT DersKodu FROM Dersler WHERE DersID IN (SELECT DersID FROM OgrenciAtamalari WHERE Ogrenci_no = @OgrenciNo)", connection))
+                    foreach (var dersKodu in dersKodlari)
                     {
-                        command.Parameters.AddWithValue("@OgrenciNo", ogrenciNo);
-
-                        using (SqlDataReader reader = command.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                string dersKodu = reader["DersKodu"].ToString();
-                                cmbDersKodu.Items.Add(dersKodu);
-                            }
-                        }
+                        cmbDersKodu.Items.Add(dersKodu);
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error populating lecture code combo box: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Ders Kodu listesi doldurulurken hata oluştu: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-        public void InsertNot(int ogrenciNo, int dersID, string sinav, int not)
+        public void InsertOrUpdateNot(int ogrenciNo, int dersID, string sinav, int not)
         {
             try
             {
-                MessageBox.Show("Sinav: " + sinav);
-
-                using (SqlConnection connection = new SqlConnection(veriErisimi.GetConnectionString()))
+                using (var dbContext = new OkulDBCntxt())
                 {
-                    connection.Open();
+                    var notlar = dbContext.Notlar
+                        .FirstOrDefault(n => n.ogrenci_no == ogrenciNo && n.ders_id == dersID);
 
-                    using (SqlCommand command = new SqlCommand("InsertOrUpdateNot", connection))
+                    if (notlar == null)
                     {
-                        command.CommandType = CommandType.StoredProcedure;
-
-                        command.Parameters.AddWithValue("@OgrenciNo", ogrenciNo);
-                        command.Parameters.AddWithValue("@DersID", dersID);
-                        command.Parameters.AddWithValue("@Sinav", sinav);
-                        command.Parameters.AddWithValue("@Not", not);
-
-                        command.ExecuteNonQuery();
+                        notlar = new Notlar
+                        {
+                            ogrenci_no = ogrenciNo,
+                            ders_id = dersID
+                        };
+                        dbContext.Notlar.Add(notlar);
                     }
+                    if (sinav == "Ara Sınav 1")
+                    {
+                        notlar.ara_sinav1 = not;
+                    }
+                    else if (sinav == "Ara Sınav 2")
+                    {
+                        notlar.ara_sinav2 = not;
+                    }
+                    else if (sinav == "Final")
+                    {
+                        notlar.final = not;
+                    }
+                    else
+                    {
+                        MessageBox.Show("Yanlış sınav tipi.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    dbContext.SaveChanges();
+                    MessageBox.Show("Sınav notu başarıyla eklenmiştir.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error inserting or updating grade: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Sınav notu eklenirken ya da güncellenirken hata oluştu: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (ex.InnerException != null)
+                {
+                    MessageBox.Show("Inner Exception: " + ex.InnerException.Message, "Inner Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+        public int GetDersIDByDersKodu(string dersKodu)
+        {
+            using (var dbContext = new OkulDBCntxt())
+            {
+                var ders = dbContext.Dersler
+                    .Where(d => d.DersKodu == dersKodu)
+                    .Select(d => d.DersID)
+                    .FirstOrDefault();
+
+                return ders;
             }
         }
         private int GetDersIDByKodu(string dersKodu)
@@ -210,26 +226,11 @@ namespace OgrenciBilgiKayit
             int dersID = 0;
             try
             {
-                using (SqlConnection connection = new SqlConnection(veriErisimi.GetConnectionString()))
-                {
-                    connection.Open();
-
-                    using (SqlCommand command = new SqlCommand("GetDersIDByDersKodu", connection))
-                    {
-                        command.CommandType = CommandType.StoredProcedure;
-                        command.Parameters.AddWithValue("@DersKodu", dersKodu);
-
-                        object result = command.ExecuteScalar();
-                        if (result != null && result != DBNull.Value)
-                        {
-                            dersID = Convert.ToInt32(result);
-                        }
-                    }
-                }
+                dersID = GetDersIDByDersKodu(dersKodu);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error occurred while getting DersID: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("DersID alırken hata oluştu: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             return dersID;
         }
